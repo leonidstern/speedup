@@ -1,0 +1,14 @@
+{
+  "name": "speedup",
+  "owner": {
+    "name": "leonidstern",
+    "url": "https://github.com/LeonidStern"
+  },
+  "plugins": [
+    {
+      "name": "speedup",
+      "source": "./",
+      "description": "Notice slow or repeated steps and speed them up safely."
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "description": "speedup: times Bash commands and adds one line of advice when a command is slow or a slow one repeats. Never blocks.",
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/speedup-hook.mjs\"", "timeout": 5 }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/speedup-hook.mjs\"", "timeout": 5 }] }
+    ],
+    "PostToolUseFailure": [
+      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/speedup-hook.mjs\"", "timeout": 5 }] }
+    ]
+  }
+}
