@@ -92,15 +92,26 @@ After a Bash command the hook may add one line that only the model reads:
 
 It also adds one short section to the system prompt: a standing reminder to run the narrowest command that answers the question and not to rerun unchanged work, followed by the commands earlier sessions measured as slow in this project (`node build.js about 94 s (12 runs)`), so the cost is known before the command runs.
 
-It keeps a ledger per session in `~/.claude/process-optimizer/sessions/`, which `po ledger` reads. Set `PROCESS_OPTIMIZER_QUIET=1` to keep the ledger and drop the lines and the section.
+Set `PROCESS_OPTIMIZER_QUIET=1` to keep the ledger and drop the lines and the section.
+
+## What it stores
+
+Nothing leaves your machine: there is no network code in the hook or in `po`.
+
+- **Session ledger**, one JSON file per session in `~/.claude/process-optimizer/sessions/`, read by `po ledger`. For each Bash command that ran a second or more it holds the time, how long it took, whether it succeeded, and the command's first 400 characters, with anything that looks like a credential replaced by `***` (values of variables and flags named like a token, key, secret or password, Authorization headers, passwords in URLs, common token formats). Ledgers older than 30 days are deleted whenever `po` reads or cleans them; `po clean --all` deletes all of them.
+- **Command timings** in Claude Code's plugin store: the short name of each command (such as `npm run build`), its run count and total time, at most 60 per project, used for the line in the system prompt.
+- **Scratch copies** made by `po trial`, `po null` and `po snap` in `PO_HOME` (default `<tmp>/process-optimizer`). `po clean` removes those older than 30 minutes, `po clean --all` all of them.
 
 ## Develop
 
 ```
 node --test test/po.test.mjs     # the tool
 claude plugin test .             # the hook
-claude plugin validate .
+claude plugin validate . --profile directory --strict
+claude plugin eval . --model sonnet --scaffold --allow-tools Bash Write Edit   # 5 cases, with and without the plugin
 ```
+
+The eval cases in `evals/` build small projects from scratch and check the result, not the wording: a serial build to speed up with the output proven identical, a render whose obvious fast flag changes the frames, a build already too fast to be worth changing, a battery budget to cut without dropping a feature, and a slow test run that should not be run twice. Last run (Sonnet, 3 runs each): 1.00 with the plugin, 0.87 without. Without it, Sonnet often skipped timing the old build, so it could not show a before and after.
 
 ## License
 

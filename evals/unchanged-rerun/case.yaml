@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: unchanged-rerun
+description: Two questions about one slow test run; nothing changes in between, so the suite should run once.
+tags: [rerun]
+runs: 3
+execution:
+  model: sonnet
+  max_turns: 20
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill]
+context:
+  scaffold_script: scaffold.sh

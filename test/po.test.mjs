@@ -139,3 +139,11 @@ test('trial stops a change that hangs', () => {
   const d = project(), r = po(d, tmp(), 'trial', '--cmd', 'sh build.sh', '--out', 'dist', '--cmd-b', 'sleep 30', '--timeout', '3')
   assert.match(r.stdout, /REJECT: the change hangs or runs far longer/)
 })
+
+test('trial copies a project that holds a socket, leaving the special file out', () => {
+  const d = project()
+  spawnSync('python3', ['-c', 'import socket,sys; s=socket.socket(socket.AF_UNIX); s.bind(sys.argv[1])', path.join(d, 'agent.sock')])
+  assert.ok(fs.lstatSync(path.join(d, 'agent.sock')).isSocket())
+  const r = po(d, tmp(), 'trial', '--cmd', 'sh build.sh', '--out', 'dist', '--apply', 'true')
+  assert.match(r.stdout, /verdict\s+SAME/, r.stdout + r.stderr)
+})

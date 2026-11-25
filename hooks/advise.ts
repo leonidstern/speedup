@@ -66,6 +66,16 @@ const STANDING =
 const KNOWN_MS = 30_000 // a command family this slow on average is worth naming up front
 const KNOWN_DAYS = 30
 
+// Commands go into the ledger with anything that looks like a credential replaced by ***: values of
+// variables or flags named like a secret, Authorization headers, passwords in URLs, and well-known token shapes.
+export const redact = (cmd: string): string =>
+  cmd
+    .replace(/\b(bearer|basic)\s+[A-Za-z0-9._~+/=-]{8,}/gi, '$1 ***')
+    .replace(/(\b[\w-]*(?:token|secret|passw(?:or)?d|pwd|api[_-]?key|access[_-]?key|private[_-]?key|credential|auth)[\w-]*\s*[=:]\s*)("[^"]*"|'[^']*'|[^\s'"]+)/gi, '$1***')
+    .replace(/(--?[\w-]*(?:token|secret|passw(?:or)?d|api[_-]?key|auth)[\w-]*[\s=]+)("[^"]*"|'[^']*'|[^\s'"-][^\s'"]*)/gi, '$1***')
+    .replace(/(\/\/[^\s/:@]+):[^\s/@]+@/g, '$1:***@')
+    .replace(/\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{16,}|xox[abprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})\b/g, '***')
+
 export const register: Register = on => {
   // What earlier sessions measured in this project, said once in the system prompt, so the cost is known before the command runs.
   on('prompt.compose', async ($, e, next) => {
@@ -133,7 +143,7 @@ export const register: Register = on => {
       else lastOk.delete(cmd)
 
       if (ms >= 1000 || isRedo) {
-        calls.push({ t: t1, cmd: cmd.slice(0, 400), ms, ok, ...(isRedo ? { redo: true as const } : {}) })
+        calls.push({ t: t1, cmd: redact(cmd).slice(0, 400), ms, ok, ...(isRedo ? { redo: true as const } : {}) })
         if (calls.length > MAX_CALLS) calls.splice(0, calls.length - MAX_CALLS)
       }
 

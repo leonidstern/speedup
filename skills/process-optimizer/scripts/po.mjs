@@ -214,7 +214,10 @@ function copyTree(src, dst) {
   const tryCp = args => spawnSync('cp', args, { stdio: 'ignore' }).status === 0
   if (process.platform === 'darwin' && (tryCp(['-cRp', src, dst]) || tryCp(['-Rp', src, dst]))) return
   if (process.platform === 'linux' && tryCp(['-a', '--reflink=auto', src, dst])) return
-  fs.cpSync(src, dst, { recursive: true, verbatimSymlinks: true, preserveTimestamps: true })
+  // Fallback, and the path taken when the tree holds sockets, pipes or device nodes (which cp cannot recreate
+  // without privileges): copy files, folders and links, and leave the special files out.
+  const plain = p => { try { const st = fs.lstatSync(p); return st.isFile() || st.isDirectory() || st.isSymbolicLink() } catch { return false } }
+  fs.cpSync(src, dst, { recursive: true, verbatimSymlinks: true, preserveTimestamps: true, filter: plain })
 }
 
 function cmdSnap(o) {
@@ -456,6 +459,7 @@ export const family = cmd => {
 function cmdLedger(o) {
   const dir = path.join(os.homedir(), '.claude', 'process-optimizer', 'sessions')
   if (!fs.existsSync(dir)) die('no ledger yet: it is written by the process-optimizer plugin hook while a session runs commands', 1)
+  pruneLedgers(dir)
   let files = fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => path.join(dir, f)).map(f => ({ f, m: fs.statSync(f).mtimeMs })).sort((a, b) => b.m - a.m)
   const load = f => { try { return JSON.parse(fs.readFileSync(f, 'utf8')) } catch { return null } }
   let ls = files.map(x => load(x.f)).filter(Boolean)
@@ -475,9 +479,20 @@ function cmdLedger(o) {
   if (rep.length) out(`  repeated and slow: ${rep.map(([k, e]) => `${k} (${e.n}x, ${secs(e.ms)})`).join(' · ')}: the first candidates to measure with po time and po null`)
 }
 
+// Session ledgers older than LEDGER_DAYS are deleted whenever po reads them or cleans up.
+const LEDGER_DAYS = 30
+function pruneLedgers(dir, all = false) {
+  let n = 0; const old = Date.now() - LEDGER_DAYS * 86400000
+  if (!fs.existsSync(dir)) return 0
+  for (const f of fs.readdirSync(dir)) { const p = path.join(dir, f); if (f.endsWith('.json') && (all || fs.statSync(p).mtimeMs < old)) { fs.rmSync(p, { force: true }); n++ } }
+  return n
+}
+
 // Removes scratch older than half an hour, so a trial another session is running survives; --all removes everything.
 function cmdClean(o) {
-  if (o.all) { fs.rmSync(HOME, { recursive: true, force: true }); return out(`removed ${HOME}`) }
+  const ledgers = path.join(os.homedir(), '.claude', 'process-optimizer', 'sessions')
+  if (o.all) { fs.rmSync(HOME, { recursive: true, force: true }); const k = pruneLedgers(ledgers, true); return out(`removed ${HOME} and ${k} session ledgers`) }
+  pruneLedgers(ledgers)
   let n = 0; const old = Date.now() - 30 * 60000
   for (const kind of ['trial', 'null', 'logs', 'snap']) { const d = path.join(HOME, kind); if (!fs.existsSync(d)) continue
     for (const e of fs.readdirSync(d)) { const p = path.join(d, e); if (kind === 'snap' || fs.statSync(p).mtimeMs < old) { fs.rmSync(p, { recursive: true, force: true }); n++ } } }

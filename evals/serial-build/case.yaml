@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: serial-build
+description: A build that compiles independent files one after another and always starts from scratch.
+tags: [build]
+runs: 3
+execution:
+  model: sonnet
+  max_turns: 60
+  timeout_seconds: 1200
+  allowed_tools: [Bash, Read, Edit, Write, Glob, Grep, Skill]
+context:
+  scaffold_script: scaffold.sh

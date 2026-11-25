@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: already-tuned
+description: The build already takes a fraction of a second; the right answer is to measure and change nothing.
+tags: [stop-rule]
+runs: 3
+execution:
+  model: sonnet
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Edit, Write, Glob, Grep, Skill]
+context:
+  scaffold_script: scaffold.sh

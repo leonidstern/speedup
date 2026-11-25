@@ -1,5 +1,6 @@
 {
   "name": "speedup",
+  "displayName": "Speedup",
   "version": "0.1.0",
   "description": "Make slow or repeated work faster with the result proven unchanged: measure, change one thing in a copy, compare, keep or reject.",
   "author": {

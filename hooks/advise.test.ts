@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
-import { family } from './advise'
+import { family, redact } from './advise'
 
 type World = { clock: ReturnType<typeof mock.clock>; written: { path: string; text: string }[]; env: Record<string, string> }
 
@@ -143,4 +143,15 @@ test('the system prompt gets one section, naming commands measured as slow earli
   expect(after.sections[1]?.text).toMatch(/Slow commands measured here in earlier sessions: `node film.cjs` about 84 s \(1 run\)\./)
   w.env.PROCESS_OPTIMIZER_QUIET = '1'
   expect((await compose()).sections.length).toBe(1)
+})
+
+test('credentials never reach the ledger', () => {
+  expect(redact('GITHUB_TOKEN=ghp_abcdefghijklmnopqrstuvwx1234 npm run build')).toBe('GITHUB_TOKEN=*** npm run build')
+  expect(redact("curl -H 'Authorization: Bearer abc.def.ghi1234567' https://api.x.com")).not.toMatch(/abc\.def/)
+  expect(redact('mysql --password=hunter22 -u root db')).toBe('mysql --password=*** -u root db')
+  expect(redact('git clone https://leo:s3cretpass@github.com/x/y')).toBe('git clone https://leo:***@github.com/x/y')
+  expect(redact('deploy --api-key sk-live_0123456789abcdefABCD')).not.toMatch(/0123456789/)
+  expect(redact('export OPENAI_API_KEY="sk-proj-aaaaaaaaaaaaaaaaaaaa"')).toBe('export OPENAI_API_KEY=***')
+  expect(redact('npm run build -- --minify')).toBe('npm run build -- --minify')
+  expect(redact('node film.cjs --mp4 && ls -la out')).toBe('node film.cjs --mp4 && ls -la out')
 })
