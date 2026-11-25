@@ -47,7 +47,9 @@ No change before a number. Write the baseline down (in your reply or a scratch n
 | Failures and retries | count them; a retry doubles the cost of a step |
 | Where the time goes inside | the tool's own timing flag (`--profile`, `--verbose`, `--durations`, `-stats`), or time each stage separately |
 
-Run it twice if it is cheap: the first run may be a cold cache.
+Run the unchanged command twice. The first run may be a cold cache, and the difference between the two outputs is your **noise floor**: the old output is often not repeatable (dates, encoders, timing). Write it down; step 5 uses it as the tolerance.
+
+If the project's default already overloads the machine (more workers than cores, memory swapping), say so, and judge by measured load, not by the worker count.
 
 **Energy and battery** (something stays busy while idle)
 
@@ -56,6 +58,8 @@ Run it twice if it is cheap: the first run may be a cold cache.
 | CPU of one process while idle | macOS: `top -l 2 -pid <pid> -stats pid,command,cpu,power` (read the 2nd sample). Linux: `top -b -n 2 -p <pid>` |
 | Wake-ups, energy impact | macOS: `top -l 2 -stats pid,command,cpu,idlew,power`. `powermetrics` needs sudo: only if the user allows it and runs it; never run sudo yourself |
 | A page while idle | Playwright: open a CDP session, call `Performance.getMetrics` at 0 s and at 10 s with nobody touching the page; compare `TaskDuration`, `ScriptDuration`, `LayoutCount`, `RecalcStyleCount`. An idle page should add close to nothing |
+| When to sample | wait about 3 s after pausing or settling before the sample: animation libraries keep ticking briefly |
+| A whole browser | add up ALL its processes by name (renderer, GPU, network helpers). WebKit's helpers are not children of the process you launched |
 | Loops that never stop | count `requestAnimationFrame` callbacks and timer fires over 10 s idle (wrap them in a test page, or use the Performance panel) |
 | Network while idle | count requests and bytes over 60 s idle (Playwright `page.on('request')`, or the Network panel) |
 
@@ -64,10 +68,11 @@ Run it twice if it is cheap: the first run may be a cold cache.
 | What | How |
 | --- | --- |
 | Frame time | in the page, record the time between `requestAnimationFrame` callbacks for a few seconds of the real interaction. Report median, 95th percentile and worst |
-| Long frames | count frames over 16.7 ms (60 Hz) or 8.3 ms (120 Hz), and over 50 ms |
+| Long frames | count frames over 25 ms and over 42 ms (1.5 and 2.5 refreshes at 60 Hz). A threshold right on a refresh multiple (like 34 ms) flips with noise |
 | Both engines | measure in Chromium AND WebKit (Playwright has both). They differ a lot on filters, blur and compositing |
 | Real time | play it back at real speed, not stepped frame by frame; stepping hides dropped frames |
-| What the frame was spent on | Chromium trace or Performance panel: script, style, layout, paint, composite |
+| What the frame was spent on | first time the page's own callbacks (rAF, timers, handlers): that splits script from paint. Then Chromium: trace or Performance panel. WebKit has no trace: switch one suspect off at a time in a throwaway copy and measure again |
+| Headless numbers | relative only: compare before with after on the same setup, don't quote them as what the user sees |
 
 ## 2. Find the bottleneck
 
@@ -77,7 +82,7 @@ One thing is usually most of the time. Find it before touching anything. Common 
 
 | Waste | Sign | Fix |
 | --- | --- | --- |
-| Serial work on idle cores | CPU use near 1 core | Split into N workers, N about cores minus 2. Separate processes, not tabs or pages inside one process |
+| Serial work on idle cores | CPU use near 1 core | Split into N workers, N about cores minus 2. Separate processes, not tabs or pages inside one process. First find what the workers share: one GPU flattens at 2-4 processes, so does one disk, and start-up bursts collide. Watch real CPU idle and load, not the worker count |
 | One browser, many pages | screenshots or recordings queue up | One browser per worker. Screenshots in one browser run one after another |
 | Writing files only to read them back | lots of temp frames or chunks on disk | Pipe from one step into the next (`a - \| b -`) |
 | Full rebuild every time | nothing changed, same wait | Rebuild only what changed. Cache by content hash of the inputs, not by date |
@@ -95,7 +100,7 @@ One thing is usually most of the time. Find it before touching anything. Common 
 | Waste | Sign | Fix |
 | --- | --- | --- |
 | CPU or GPU busy while idle | process above about 1-2% CPU with nothing happening | Find the loop that runs and stop it while there is nothing to do |
-| `requestAnimationFrame` or timers running while nothing changes | callbacks keep firing on a still screen | Stop the loop when paused, hidden or settled; start it again on demand (input, data, play) |
+| `requestAnimationFrame` or timers running while nothing changes | callbacks keep firing on a still screen | Stop the loop when paused, hidden or settled; start it again on demand (input, data, play). When you gate a loop on a state, find EVERY place that changes that state (keyboard, API, end of media, code), not only the button |
 | Polling instead of events | a timer asks "anything new?" | Use the event: file watcher, WebSocket or SSE, observer, callback. If polling must stay, make it slower and back off |
 | Animations off-screen or in hidden tabs | work continues with nothing visible | Pause on `visibilitychange` and with `IntersectionObserver`; resume when visible |
 | Wake-ups from intervals | many short timers, high idle wake-ups | Merge timers, lengthen them, remove the ones nobody reads |
@@ -128,27 +133,30 @@ If one change is clearly most of the gain, do that one and stop.
 
 - Put it in a copy, a new file or a new flag (`render-fast.sh`, `--workers 8`). The old command keeps working unchanged.
 - One change, then measure. Two changes at once and you don't know which one helped or which one broke the output.
-- Raise parallelism in steps (2, 4, 8...) and watch memory; stop where it no longer gets faster.
+- Raise parallelism in steps (2, 4, 8...) and watch memory and real load. Compare each step with the previous step, not with the baseline; stop where it no longer gets faster.
+- Changing the number of workers or slices can change the output (video keyframes land elsewhere, test order shifts). Keep the old split, or prove sameness again for the new one.
+- Run every trial under a time limit, about 3x the baseline. A hang counts as "output differs".
+- A requested change to the output (for example `setsar=1` for square pixels) is a separate step. Do it and report it apart from the speed-up, never mixed in.
 
 ## 5. Prove the output is the same
 
-Before keeping a change, show the result is the same as before. Pick what fits:
+Before keeping a change, show the result is the same as before. First know the noise floor from step 1 (the unchanged command run twice): a change is "the same" when it differs from the old output no more than the old output differs from itself. Pick what fits:
 
 | Output | Proof |
 | --- | --- |
-| Files | byte compare (`cmp`, `diff -r`) or hashes (`shasum -a 256`) of old and new output |
-| Images, video, pages | pixel or frame diff at fixed times, with the tolerance stated (for example "max 1/255 per channel", "0 pixels differ") |
-| Code behaviour | the project's own tests: same set passes, same set fails |
+| Files | byte compare (`cmp`, `diff -r`) or hashes (`shasum -a 256`) of old and new output. Stamped files (PNG / MP4 metadata, dates) never match by bytes: compare the decoded pixels or frames |
+| Images, video, pages | pixel or frame diff at fixed times: mean difference per frame plus the share of pixels over a threshold (or PSNR), with the tolerance stated. Not the max per channel: one noisy pixel decides it |
+| Code behaviour | the project's own tests: same set passes, same set fails. Timing-sensitive tests can flip under load: name that as a risk. A baseline that is already flaky is reported, not "fixed" |
 | Test speed-ups | the same list of tests ran, with the same pass/fail per test |
 | Energy and rendering changes | frame or pixel diff at fixed times, and the same behaviour: it still animates, updates and responds when it should |
 
 Then the rule:
 
-- Output differs: undo the change. A stated, tiny tolerance is fine only where exact bytes can't match (encoders, anti-aliasing), and say so.
-- Not faster by at least 10% or 5 seconds (or, for energy and frames, the measured number did not improve): undo the change. It is not worth the extra code.
+- Output differs by more than the noise floor, or the run hung or hit the time limit: undo the change. Say what the tolerance was and where it came from.
+- Not faster by at least 10% or 5 seconds (or, for energy and frames, the measured number did not improve): undo the change. It is not worth the extra code. When stepping a parameter up, compare with the previous step.
 - Otherwise keep it, and go to the next change.
 
-Clean up the temp files you created. Leave everything else as it was.
+Clean up the temp files you created, including temp folders left behind by runs you killed. Remove only what you can prove you made; list the rest in the report. Leave everything else as it was.
 
 ## 6. Report
 
@@ -156,7 +164,10 @@ A small table, nothing more:
 
 | Step | Before | After | Same output proven by |
 | --- | --- | --- | --- |
-| Render 40 clips | 6m10s, 1 core | 58s, 8 workers | sha256 of all 40 files identical |
+| Render 40 clips | 6m10s, 1 core | 58s, 8 workers | decoded frames: mean diff 0.02/255, same as two old runs |
 | Idle page CPU | 14% | 0.3% | frame diff at 0/1/2 s: 0 pixels; animation still plays on hover |
+| Test suite | 48s, already parallel | - | measured, nothing safe to change: left alone |
 
-Add one line for anything tried and undone, and one line for anything that needs the user's OK (a safety rule).
+"Measured, nothing safe to change, left alone" is a valid result. So is "cause found, fix not safe, left alone": say what the cause is.
+
+Add one line for anything tried and undone, one line for anything that needs the user's OK (a safety rule), and a separate line for any requested change to the output.
