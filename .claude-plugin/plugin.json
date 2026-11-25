@@ -6,5 +6,13 @@
     "name": "leonidstern",
     "url": "https://github.com/leonidstern/speedup"
   },
-  "keywords": ["performance", "speed", "build", "tests", "battery", "rendering"]
+  "license": "MIT",
+  "keywords": [
+    "performance",
+    "speed",
+    "build",
+    "tests",
+    "battery",
+    "rendering"
+  ]
 }

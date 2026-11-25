@@ -66,3 +66,7 @@ The hook keeps small files in your temp folder under `speedup-hook/` (start time
 ```
 node --test
 ```
+
+## License
+
+MIT, see [LICENSE](LICENSE).
