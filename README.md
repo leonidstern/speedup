@@ -15,19 +15,21 @@ Two parts:
 
 ## Install
 
-From a local folder:
+In Claude Code:
 
 ```
-/plugin marketplace add /path/to/speedup
+/plugin marketplace add leonidstern/speedup
 /plugin install speedup@speedup
 ```
 
 Or from a terminal:
 
 ```
-claude plugin marketplace add /path/to/speedup
+claude plugin marketplace add leonidstern/speedup
 claude plugin install speedup@speedup
 ```
+
+From a local copy, use its folder path instead of `leonidstern/speedup`.
 
 Needs Node (any current version). No packages.
 

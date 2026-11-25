@@ -4,7 +4,7 @@
   "description": "Notice slow or repeated steps and speed them up safely: measure, find the bottleneck, one change at a time, prove the output is the same.",
   "author": {
     "name": "leonidstern",
-    "url": "https://github.com/LeonidStern"
+    "url": "https://github.com/leonidstern/speedup"
   },
   "keywords": ["performance", "speed", "build", "tests", "battery", "rendering"]
 }
