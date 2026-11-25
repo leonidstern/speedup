@@ -111,7 +111,7 @@ claude plugin validate . --profile directory --strict
 claude plugin eval . --model sonnet --scaffold --allow-tools Bash Write Edit   # 5 cases, with and without the plugin
 ```
 
-The eval cases in `evals/` build small projects from scratch and check the result, not the wording: a serial build to speed up with the output proven identical, a render whose obvious fast flag changes the frames, a build already too fast to be worth changing, a battery budget to cut without dropping a feature, and a slow test run that should not be run twice. Last run (Sonnet, 3 runs each): 1.00 with the plugin, 0.87 without. Without it, Sonnet often skipped timing the old build, so it could not show a before and after.
+The eval cases in `evals/` build small projects from scratch and check the result, not the wording: a serial build to speed up with the output proven identical, a render whose obvious fast flag changes the frames, a build already too fast to be worth changing, a battery budget to cut without dropping a feature, and a slow test run that should not be run twice. Last run (Sonnet, 3 runs each): 1.00 with the plugin, 0.86 without. Without it, Sonnet often skipped timing the old build, so it could not show a before and after.
 
 ## License
 
