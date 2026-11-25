@@ -1,5 +1,6 @@
 {
   "name": "speedup",
+  "description": "A skill, a measuring tool and an advisory hook for making slow or repeated work faster with the result proven unchanged.",
   "owner": {
     "name": "leonidstern",
     "url": "https://github.com/LeonidStern"
@@ -8,7 +9,7 @@
     {
       "name": "speedup",
       "source": "./",
-      "description": "Notice slow or repeated steps and speed them up safely."
+      "description": "Make slow or repeated work faster with the result proven unchanged."
     }
   ]
 }

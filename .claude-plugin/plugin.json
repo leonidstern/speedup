@@ -1,18 +1,12 @@
 {
   "name": "speedup",
   "version": "0.1.0",
-  "description": "Notice slow or repeated steps and speed them up safely: measure, find the bottleneck, one change at a time, prove the output is the same.",
+  "description": "Make slow or repeated work faster with the result proven unchanged: measure, change one thing in a copy, compare, keep or reject.",
   "author": {
     "name": "leonidstern",
-    "url": "https://github.com/leonidstern/speedup"
+    "url": "https://github.com/LeonidStern"
   },
-  "license": "MIT",
-  "keywords": [
-    "performance",
-    "speed",
-    "build",
-    "tests",
-    "battery",
-    "rendering"
-  ]
+  "homepage": "https://github.com/leonidstern/speedup",
+  "repository": "https://github.com/leonidstern/speedup",
+  "license": "MIT"
 }
